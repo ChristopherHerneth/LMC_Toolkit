@@ -5,9 +5,8 @@ import numpy as np
 import pathlib
 import scipy
 from scipy.spatial.transform import Rotation as R
-from OsimPython.plotUtil import addArrow
-from OsimPython.osim_type_util import osimVec3ToArray
-from Linalg.ray_tracing_util import get_regressionPlane
+from Python.osim_type_util import osimVec3ToArray
+from Python.ray_tracing_util import get_regressionPlane
 import plotly.graph_objects as go
 
 def getHandModel():
