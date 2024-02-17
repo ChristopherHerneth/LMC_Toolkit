@@ -124,6 +124,7 @@ def generate_hand_poses(HandModel, state, num_poses, x_limits=[-1000, 1000], y_l
     palmMarkers = np.zeros([num_poses, 8, 3])
     palmPlnNormals = np.zeros([num_poses, 3])
     palmCentroids = np.zeros([num_poses, 3])
+    forearm_vecs = np.zeros([num_poses, 3])
     fingers = []
 
     x = np.random.uniform(x_limits[0],x_limits[1],num_poses) 
@@ -145,6 +146,7 @@ def generate_hand_poses(HandModel, state, num_poses, x_limits=[-1000, 1000], y_l
 
         palmPlnNormals[i, :] = get_regressionPlane(palmMarkers[i, :]) # normal plane to the palm and palm centroid
         palmCentroids[i, :] = np.mean(palmMarkers[i, :], axis=0) # centroid marker of the palm
+        forearm_vecs[i, :] = (pos_markers[24] + pos_markers[25])/2 - (pos_markers[22] + pos_markers[23])/2 # vector from the elbow to the wrist center
 
         # FINGERS
         # the line chain of a finger starts at the finger root and clinbs marker by marker to the finger tip
@@ -154,7 +156,7 @@ def generate_hand_poses(HandModel, state, num_poses, x_limits=[-1000, 1000], y_l
                                 (pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])/np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]]), 
                                 np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])) for i in range(fingers_idx.shape[1]-1)] for j in range(fingers_idx.shape[0])], dtype=object)]
     
-    return handMarkers, palmMarkers, palmPlnNormals, palmCentroids, fingers
+    return handMarkers, palmMarkers, palmPlnNormals, palmCentroids, fingers, forearm_vecs
 
 def generate_hand_pose(HandModel, state, pos, PS, FE, WD):
     '''
@@ -174,6 +176,7 @@ def generate_hand_pose(HandModel, state, pos, PS, FE, WD):
     palmMarkers = np.zeros([1, 8, 3])
     palmPlnNormals = np.zeros([1, 3])
     palmCentroids = np.zeros([1, 3])
+    forearm_vecs = np.zeros([1, 3])
     fingers = []
 
     i = 0
@@ -187,6 +190,7 @@ def generate_hand_pose(HandModel, state, pos, PS, FE, WD):
 
     palmPlnNormals[i, :] = get_regressionPlane(palmMarkers[i, :]) # normal plane to the palm and palm centroid
     palmCentroids[i, :] = np.mean(palmMarkers[i, :], axis=0) # centroid marker of the palm
+    forearm_vecs[i, :] = (pos_markers[24] + pos_markers[25])/2 - (pos_markers[22] + pos_markers[23])/2 # vector from the elbow to the wrist center
 
     # FINGERS
     # the line chain of a finger starts at the finger root and clinbs marker by marker to the finger tip
@@ -196,9 +200,9 @@ def generate_hand_pose(HandModel, state, pos, PS, FE, WD):
                             (pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])/np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]]), 
                             np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])) for i in range(fingers_idx.shape[1]-1)] for j in range(fingers_idx.shape[0])], dtype=object)]
     
-    return handMarkers, palmMarkers, palmPlnNormals, palmCentroids, fingers
+    return handMarkers, palmMarkers, palmPlnNormals, palmCentroids, fingers, forearm_vecs
 
-def plot_hand(fig, pos_markers):
+def plot_hand(fig, pos_markers, color='blue', names=np.arange(0, 26)):
     if fig is None:
         fig = go.Figure()
     fig.add_trace(go.Scatter3d(
@@ -206,10 +210,10 @@ def plot_hand(fig, pos_markers):
             y=pos_markers[:, 1],
             z=pos_markers[:, 2],
             mode='markers+text',
-            text=np.arange(0, 26),
+            text=names,
             marker=dict(
                 size=5,
-                color='blue',
+                color=color,
             )
     ))
 

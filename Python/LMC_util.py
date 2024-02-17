@@ -4,6 +4,12 @@ from scipy.spatial.transform import Rotation as R
 from Python.plotUtil import addArrow, addMarker
 from Python.ray_tracing_util import intersectionPoint_pln_line, in_hull, dist_lines, get_regressionPlane
 
+fingers_idx_LMC = np.array([[1, 2, 3, 4], #thumb (root to tip)
+                    [5, 6, 7, 8], #index
+                    [9, 10, 11, 12], #middle
+                    [13, 14, 15, 16], #ring
+                    [18, 19, 20, 21]]) #pinky
+
 def getLMC_plns(LMC_orient, LMC_alpha1, LMC_alpha2):
     '''
         here the LMC is characterized by an orientation (extrinsic euler angles), and 2 angles that descrie the visibility pyramid of the LMC (see LMC documentation)
@@ -56,7 +62,7 @@ def make_LMC(LMC_loc, LMC_orient, LMC_H=600, LMC_alpha1 = (180-150) / 2 * np.pi 
     LMC_nvecs, LMC_pln_vecs, LMC_fwd = getLMC_plns(LMC_orient, LMC_alpha1, LMC_alpha2)
     return [LMC_loc, LMC_orient, LMC_H, LMC_nvecs, LMC_pln_vecs, LMC_fwd, LMC_alpha1, LMC_alpha2]
 
-def plotLMC(fig, LMC, color, name='', scale=1):
+def plotLMC(fig, LMC, color='orange', name='', scale=1):
     LMC_loc = LMC[0]
     LMC_nvecs = LMC[3]
     LMC_pln_vecs = LMC[4]
@@ -193,35 +199,33 @@ def check_intersection_finger(finger, LMC_loc, marker, finger_radius, fig=None, 
         d, t1, t2 = dist_lines(p1=LMC_loc, p2=finger[phlange][0], v1=v1, v2=finger[phlange][1]) # LMC center, base of phlange, vector LMC to marker, vector along finger phlange
         occlusion = d < finger_radius and dist_to_marker >= t1 and t1 > 0 and t2 > 0 and t2 < finger[phlange][2]
         occ[phlange] = occlusion
-        if fig is None and verbose == 0 and occlusion:
-            #print('      Phlange: {} intersection'.format(phlange))
-            return True
+        if fig is None and occlusion:
+            if verbose > 0:
+                print('      Phlange: {} intersection'.format(phlange))
+            return True, fig
         elif fig is not None:
             if occlusion: 
-                print('      Phlange: {} intersection'.format(phlange))
                 fig = addArrow(fig, finger[phlange][0], finger[phlange][1]*finger[phlange][2], color='red')
                 #print(d, t1, t2, d < finger_radius, dist_to_marker >= t1,  t2 > 0,  t2 < finger_lines[finger, i][2])
                 # print markers at closest location between rays
                 fig = addArrow(fig, LMC_loc, v1*(dist_to_marker-5), color='red') # arrow to the marker we are investigating
                 #fig = addMarker(fig, LMC_loc+v1*t1, color='red', name=str(phlange))
                 #fig = addMarker(fig, finger[phlange][0]+finger[phlange][1]*t2, color='red', name=str(phlange))
+                if verbose > 0:
+                    print('      Phlange: {} intersection'.format(phlange))
+                else:
+                    return True, fig
             #else:
                 #fig = addArrow(fig, LMC_loc, v1*(dist_to_marker-5), color='green') # arrow to the marker we are investigating
                 #fig = addMarker(fig, LMC_loc+v1*t1, color='green', name=str(phlange))
                 #fig = addMarker(fig, finger[phlange][0]+finger[phlange][1]*t2, color='green', name=str(phlange))
-            if verbose == 0 and occlusion:
-                return fig, True
-            
-    if verbose == 0:
-        if fig is None:
-            return False
-        else:
-            return fig, False
-    elif verbose == 1:    
-        if fig is None:
-            return occ
-        else:
-            return fig, occ
+
+    if verbose == 0:        
+        return False, fig
+    elif verbose == 2:
+        return occ, fig
+    else:
+        return np.max(occ), fig
         
 def check_intersection_palm(LMC_loc, marker, palm_plane_normal, palm_centroid, palm_markers, fig=None, verbose=0):
     '''check if the line of sight is blocked by the palm plane'''
@@ -230,49 +234,61 @@ def check_intersection_palm(LMC_loc, marker, palm_plane_normal, palm_centroid, p
     v /= ll
     intersection_point = intersectionPoint_pln_line(n=palm_plane_normal, v=v, c=palm_centroid, p=marker)
     LMC_IP = (intersection_point - LMC_loc) / np.linalg.norm(intersection_point - LMC_loc) # vector from LMC to palm intersection point
+    occlusion = False
     if np.linalg.norm(intersection_point - LMC_loc) < ll and np.arccos(LMC_IP@v) == 0: # if the finger marker is closer to the LMC than the intersection point, there cant be a collision AND the vector from the LMC to the intersection point and the vector from the LMC to the marker point in the same direction
         occlusion = in_hull(palm_markers, intersection_point) # check if the intersection point lies in the conves hull of the palm markers
         
         if verbose > 0:
-            print('Palm intersection')
+            print('    Palm intersection')
 
-        if fig is None:
-            return occlusion
-        else:
-            fig = addArrow(fig, LMC_loc, v*100, color='black')
+        if fig is not None:
+            #fig = addArrow(fig, LMC_loc, v*100, color='black')
             if occlusion:  
                 fig = addMarker(fig, intersection_point, color='red')#, name=str(m))
-            else:
-                fig = addMarker(fig, intersection_point, color='green')#, name=str(m))
-            return fig, occlusion
-    elif fig is None:
-        return False
-    else:
-        return fig, False
-    
-def check_LMC_Hand_visibility(LMC, pos_markers, fingers_idx, finger_lines, finger_radius, palm_plane_normal, palm_centroid, palm_markers):
+            # else:
+            #     fig = addMarker(fig, intersection_point, color='green')#, name=str(m))
+    return occlusion, fig
+
+def check_LMC_Hand_visibility(LMC, pos_markers, fingers_idx, finger_lines, finger_radius, palm_plane_normal, palm_centroid, palm_markers, forearm_vec, mode='LMC', fig=None, verbose=0):
     '''
         CHECKS IF THE HAND IS VISIBLE 
+        forearm_vec = vector from the elbow to the wrist center
+        mode can be either of 'LMC' or 'OSIM', depending on the hand model used
     '''
     occlusions_ = np.ones(7)
     ###############################################################
     # 0 check if the approach angle is correct
     # the approach vector must pass through the LMC entrance plane
-    vFa = (pos_markers[24] + pos_markers[25])/2 - (pos_markers[22] + pos_markers[23])/2 # vector from the elbow to the wrist center
-    if (vFa @ LMC[5] ) < 0: # the forearm vector does not point in the same direction as the LMW forward vector 
+    if (forearm_vec @ LMC[5] ) < 0: # the forearm vector does not point in the same direction as the LMC forward vector 
         occlusions_ *= 0
-        return occlusions_
+        if verbose == 1:
+            print('    Wrong approach direction')
+        else:
+            return occlusions_, fig
     ###############################################################
     # 1 check if all markers are in the LMC volume
     # the inproduct of all LMC plane normal vectors with all markers needs to be non-negative
-    for m in pos_markers[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 24, 25]]: # remove marker indices 22, 23 (far away elbow) -> they can be outside
+    if mode == 'LMC':
+        pp = pos_markers[1:]
+    elif mode == 'OSIM':
+        pp = pos_markers[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 24, 25]]
+    else:
+        pp = pos_markers
+    
+    for mm, m in enumerate(pp): # remove marker indices 22, 23 (far away elbow) -> they can be outside
         if np.linalg.norm(m-LMC[0]) > LMC[2]: # the marker is outside the LMC range
             occlusions_ *= 0
-            return occlusions_
+            if verbose == 1:
+                print('    Marker {} out of range'.format(mm))
+            else:
+                return occlusions_, fig
         for n in LMC[3]: # LMC plane normal vectors
             if (n @ (m-LMC[0])) < 0: # the marker is outside
                 occlusions_ *= 0
-                return occlusions_
+                if verbose == 1:
+                    print('    Marker {} out of LMC FoV'.format(mm))
+                else:
+                    return occlusions_, fig
     
     # if occlusions_[1] == 0:
     #     print('Outside LMC range')
@@ -293,56 +309,66 @@ def check_LMC_Hand_visibility(LMC, pos_markers, fingers_idx, finger_lines, finge
     # check if marker passes through palm plane to be seen
     # check against all other fingers (we ignore self occlusion)
     for f in range(fingers_idx.shape[0]): # finger
-        #print('___________________________________')
-        #print('Finger ', f)
+        if verbose > 0:
+            print('___________________________________')
+            print('Finger ', f)
         for m in fingers_idx[f]: # for all finger markers if a single finger marker is occluded, the entire finger is marked as not visible
-            #print('  marker ', m)
             marker = pos_markers[m] # finger marker
-            fv = check_intersection_palm(LMC[0], marker, palm_plane_normal, palm_centroid, palm_markers) #check if the line of sight is blocked by the palm plane
-            #fig, fv = check_intersection_palm(LMC[0], marker, palm_plane_normal, palm_centroid, palm_markers, fig=fig, verbose=1)
+            fv, fig = check_intersection_palm(LMC[0], marker, palm_plane_normal, palm_centroid, palm_markers, fig=fig, verbose=0) #check if the line of sight is blocked by the palm plane
             if fv:
                 occlusions_[2+f] = 0
-                break
+                if verbose == 1:
+                    print('    Finger {}, marker {}; occluded by Palm'.format(f, m))
+                else:
+                    break
             for of in range(fingers_idx.shape[0]): # check if the line of sight is blocked by a other fingers of the handr
                 if of == f:
                     continue
-                #print('    of: ', of)
-                fv = check_intersection_finger(finger_lines[of], LMC_loc=LMC[0], marker=marker, finger_radius=finger_radius, fig=None)
-                #fig, fv = check_intersection_finger(finger_lines[of], LMC_loc=LMC[0], marker=marker, finger_radius=finger_radius, fig=fig)
-                #print('          ', fv)
+                fv, fig = check_intersection_finger(finger_lines[of], LMC_loc=LMC[0], marker=marker, finger_radius=finger_radius, fig=fig, verbose=0)
                 if fv:
-                    #print(of)
                     occlusions_[2+f] = 0
-                    break
-            
-            
+                    if verbose == 1:
+                        print('    Finger {}, marker {}: occluded by Finger {}'.format(f, m, of))
+                    else:
+                        break    
         # if occlusions_[2+f] == 0: # when a single finger is not visible
         #     break
 
-    return occlusions_
+    return occlusions_, fig
 
+def make_hand_poses(frames):
+    '''
+        makes the input to check_LMC_Hand_visibility()
+        CAREFUL HERE!! Make sure to onl yinclude the markers in frames that are visible in the documentation!
+        frames have the shape (num_frames, num_markers, 3)
+    '''
+    fingers_idx = fingers_idx_LMC
+    num_poses = frames.shape[0]
+    handMarkers = np.zeros([num_poses, frames.shape[1], 3])
+    palmMarkers = np.zeros([num_poses, 6, 3])
+    palmPlnNormals = np.zeros([num_poses, 3])
+    palmCentroids = np.zeros([num_poses, 3])
+    forearm_vecs = np.zeros([num_poses, 3])
+    fingers = []
 
-'''def fun(x, args):
-    #x *= np.array([1000, 1000, 360, 360]*num_LMC)
-    print(x)
-    data = args
-    LMCs = [make_LMC(LMC_loc=[x[0+4*l], x[1+4*l], 0], LMC_orient=[x[2+4*l], 0, x[3+4*l]], LMC_H=LMC_H) for l in range(num_LMC)]
+    for i in range(num_poses):
+        pos_markers = frames[i, :]
+        handMarkers[i, :] = pos_markers
+        pv1__ =  pos_markers[1] - pos_markers[9] # vector pointing from the finger root to the wrist
+        pv1__ /= np.linalg.norm(pv1__)
+        palmMarkers[i, :] = np.array([pos_markers[5] + pv1__*3, pos_markers[9] + # to make sure the finger root markers do not intersect with the palm
+                                      pv1__*3, pos_markers[13] + pv1__*3, pos_markers[18] + pv1__*3, pos_markers[1] - pv1__*5, pos_markers[17]])
+
+        palmPlnNormals[i, :] = get_regressionPlane(palmMarkers[i, :]) # normal plane to the palm and palm centroid
+        palmCentroids[i, :] = np.mean(palmMarkers[i, :], axis=0) # centroid marker of the palm
+        forearm_vecs[i, :] = (pos_markers[1] + pos_markers[17])/2 - pos_markers[0] # vector from the elbow to the wrist center
+
+        # FINGERS
+        # the line chain of a finger starts at the finger root and clinbs marker by marker to the finger tip
+        # the base of a line is always the origin of a vector pointing from towards the tip -> this means the only frogner marker not a line origin is the finger tip
+        #finger_lines has the shape (num_fingers, num_phlanges, len_phlanges)
+        fingers += [np.array([[(pos_markers[fingers_idx[j, i]], 
+                                (pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])/np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]]), 
+                                np.linalg.norm(pos_markers[fingers_idx[j, i+1]]-pos_markers[fingers_idx[j, i]])) for i in range(fingers_idx.shape[1]-1)] for j in range(fingers_idx.shape[0])], dtype=object)]
     
-    occlusions = []
-    for LMC in LMCs:
-        for i in range(num_poses):
-            occlusions += [check_LMC_Hand_visibility(LMC, pos_markers=data[0][i], fingers_idx=fingers_idx, finger_lines=data[4][0], finger_radius=finger_radius, palm_plane_normal=data[2][i], palm_centroid=data[3][i], palm_markers=data[1][i])]
-
-    occlusions = np.array(occlusions) 
-
-    #print(np.sum(occlusions))
-    # fig = go.Figure()
-    # fig = plotLMC(fig, LMCs[0], color='orange', name='LMC', scale = 30)
-    # fig = plot_hand(fig, data[0][0])
-    # fig.show()
-    met = (1-(occlusions[0, 0] * occlusions[0, 1])) * 10000
-    met += (5-np.sum(occlusions[0, 2:-1])) * 1000
-    #met = np.linalg.norm(data[0][0] - [x[0], x[1], 0])
-
-    return met
-'''
+    return handMarkers, palmMarkers, palmPlnNormals, palmCentroids, fingers, forearm_vecs
