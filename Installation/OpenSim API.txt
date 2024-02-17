@@ -1,0 +1,45 @@
+- module _simbody not found:
+    ----use OpenSim 4.2
+    2. add C:\OpenSim4.2\sdk\Python to PYTHONPATH (make sure there are no spaces in the name)
+    3. add C:\OpenSim4.2\bin to path (make sure it appears before any other open sim environment)
+    4. install openSim api according to the instructions in the website (4.2)
+    ------------------------
+    ----use OpenSim 4.4
+    2. delete OpenSim 4.2 from python path
+    3. delete OpenSim 4.2 from path or at least move below opensim 4.4
+    4. Download the Anaconda environment file (conda_env.yml) https://simtk-confluence.stanford.edu:8443/download/attachments/29165295/conda_env.yml?version=1&modificationDate=1643835525076&api=v2 and place it directory of your choice (conveniently in C:\OpenSim4.4\sdk\Python
+    5. open an Anaconda powershell
+    6. conda init cmd.exe
+    7. cd C:\OpenSim4.4\sdk\Python
+    8. conda env create -f conda_env.yml
+    9. conda activate opensim_scripting
+    10. python setup_win_python38.py (it is here C:\OpenSim4.4\sdk\Python)
+    11. python -m pip install . ( the dot is important)
+    11.5. step necessary on amartyas machine: conda install - opensim-org opensim
+    12. to use OpenSim 4.4 in a python script there must be the following lines before importing opensim:
+        import os
+        os.add_dll_directory("C:/OpenSim4.4/bin") # or however the location is called on your PC
+
+    -> moco problem not solved yet conda install -c opensim-org opensim-moco
+
+- scale tool doesnt work
+    use absolute path to required files. Otherwise the tool returns an error
+
+- InverKinematicsSolver throws an error that the number or type of input is wrong:
+    this is probably because you are using OpenSim 4.2 and the c++ is expecting a pointer
+    i couldnt solve this problem. Use openSim 4.4 as that function implements call by value as well
+
+- RuntimeError: std::exception in 'bool OpenSim::InverseDynamicsTool::run()': InverseDynamicsTool Failed, please see messages window for details...
+    check the ID settings file. Is there a model name or does the field say unassigned?
+    If the xml file was created by the GUI then the file will be unassigned and the solver does not know whch model to load
+
+- AttributeError: module 'os' has no attribute 'add_dll_directory'
+    are you using the correct environment? OpenSim44? This error usually occurs if opensim is not installed in that environment
+
+- runt´timeError: std::exception in 'void OpenSim__AssemblySolver::track(SimTK::State &)': AssemblySolver::track() attempt failed.
+  THE IK solver throws an error: try closing opensim if its open in the background and restarting the PC
+  try a different marker set and test it in the OpenSim GUI
+
+- tree error with massless bodies
+  The problem is the ground to throrax joint. The original is a CustomJoint, which works fine.
+  If we replace it with a FreeJoint problems arise

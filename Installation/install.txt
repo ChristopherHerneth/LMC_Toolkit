@@ -1,0 +1,10 @@
+# Tested with Python 3.8
+
+install openSim4.2 or 4.4 and then restart all shells (also VS Code. Otherwise it won't work). 
+
+conda install -c anaconda scipy
+conda install -c conda-forge vtk
+conda install numpy, matplotlib
+conda install -c anaconda pillow
+conda install -c plotly 
+pip install pyswarms
