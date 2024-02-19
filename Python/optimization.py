@@ -33,6 +33,13 @@ def PSO_Objective(x, args):
                                                               palm_markers=data[1][i], forearm_vec=data[5][i], fig=None, verbose=0)
 
         occlusions = np.array(occlusions).astype(np.int16)
+
+        '''
+            this metrics functions in the following
+            the number of poses having a finger that is not seen by and LMC is punished the most 
+            a change in the number of poses that have 0 visibility must be noticeable in the metric compared to 1, 2, 3, 4, 5 fingers, and so on
+            this is why the denumerator grows with the exponential
+        '''
         #print(occlusions.shape) # num_poses, num_LMC, 7 (output dim of check_LMC_Hand_visibility)
         vis = np.sum(occlusions, axis = 1)[:, 2:] # how many LMCs see each finger for each pose
         #print(vis.shape)
@@ -44,12 +51,6 @@ def PSO_Objective(x, args):
         vis_LMC[unique] = counts
 
         met = 0
-        '''
-            this metrics functions in the following
-            the number of poses having a finger that is not seen by and LMC is punished the most 
-            a change in the number of poses that have 0 visibility must be noticeable in the metric compared to 1, 2, 3, 4, 5 fingers, and so on
-            this is why the denumerator grows with the exponential
-        '''
         for lm in range(num_LMC):  
             met += vis_LMC[lm] / num_poses ** (lm+1) # maximize the global visibility of all fingers
 
