@@ -1,4 +1,5 @@
 import plotly.graph_objs as go
+import numpy as np
 
 def addArrow(fig, start, vec, text=None, color='red', arrow_tip_ratio=0.3, arrow_starting_ratio=0.98):
     vec = vec + start # vec needs to be the vectors starting from start not from the origin
@@ -72,47 +73,54 @@ def addMarker(fig, pos, color='blue', name=''):
 
     return fig
 
-
-    '''
-        takes the path to a .sto file and displayes the hardcoded angles and moments
-    '''
-    sto_data = readFile_ID_sto(path, filename)
-    data_dict_ID = sto_data[-1]
-    timeseries = data_dict_ID['time']
-
-    print(data_dict_ID.keys())
-
-    fig = go.Figure()
-
-    hand = 'R'
-    #relevant = ['elbow_flexion_' +hand.lower()+ '_moment', 'pro_sup_' +hand.lower()+ '_moment', 'wrist_hand_r3_' +hand.lower()+ '_moment', 'wrist_hand_r1_' +hand.lower()+ '_moment']
-    #labels = ['elbow_flex+_ext-_moment_'+hand.lower(), 'pro+_sup-_moment_'+hand.lower(), 'wrist_flex+_ext-_moment_'+hand.lower(), 'wrist_dev_ulnar+_rad-_moment_'+hand.lower()] # the order is important!!
-
-    relevant = ['elv_angle_'+hand.lower()+'_moment', 'shoulder_elv_'+hand.lower()+ '_moment', 'shoulder_rot_'+hand.lower()+ '_moment', 
-                'elbow_flexion_'+hand.lower()+ '_moment', 'pro_sup_'+hand.lower()+ '_moment', 
-                'wrist_hand_r1_'+hand.lower()+ '_moment', 'wrist_hand_r3_'+hand.lower()+ '_moment']
-    labels = ['shoulder_flex+_ext-_moment', 'shoulder_abd+_add-_moment', 'shoulder_rotint+_ext-_moment', 
-              'elbow_flex+_ext-_moment', 'pro+_sup-_moment', 
-              'wrist_flex+_ext-_moment', 'wrist_dev_ulnar+_rad-_moment'] # the order is important!!
-    
-    #'shoulder1_r2_'+hand.lower()+ '_moment', 
-
-    for r, l in zip(relevant, labels):
-        fig.add_trace(go.Scatter(
-                        x=timeseries,
-                        y=data_dict_ID[r],
-                        name=l,
-                        mode="lines",
-                        )
-        )
+def plot_hand(fig, pos_markers, color='blue', names=np.arange(0, 26)):
+    if fig is None:
+        fig = go.Figure()
+    fig.add_trace(go.Scatter3d(
+            x=pos_markers[:, 0],
+            y=pos_markers[:, 1],
+            z=pos_markers[:, 2],
+            mode='markers+text',
+            text=names,
+            marker=dict(
+                size=5,
+                color=color,
+            )
+    ))
 
     fig.update_layout(
-        width=800,
-        height=500,
-        title='Subject Forces',
-        xaxis_title='time [s]',
-        yaxis_title='joint torques [Nm]',
-        #legend_title="Legend Title",
+        width=1024,
+        height=1024,
+        scene = dict(
+            xaxis=dict(),
+            yaxis=dict(),
+            zaxis=dict(),
+            aspectmode='data', #this string can be 'data', 'cube', 'auto', 'manual'
+            #a custom aspectratio is defined as follows:
+            aspectratio=dict(x=1, y=1, z=1)
+        ), 
+        scene_camera = dict(
+            up=dict(x=0, y=-0, z=20),
+            center=dict(x=0, y=0, z=0),
+            eye=dict(x=-2, y=-0.5, z=3)
+            )
     )
 
-    fig.show()
+    return fig
+
+def plot_hand_and_marker(pos_markers, marker, fig=None, color='red', name=''):
+    if fig == None:
+        fig = plot_hand(pos_markers)
+    fig.add_trace(go.Scatter3d(
+            x=[marker[0]],
+            y=[marker[1]],
+            z=[marker[2]],
+            mode='markers+text',
+            text=name,
+            marker=dict(
+                size=5,
+                color=color,
+            )
+    ))
+
+    return fig
