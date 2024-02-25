@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from Python.LMC_util import make_LMC, check_LMC_Hand_visibility
-from Python.Hand_model import plot_hand
+from Python.plotUtil import plot_hand
 from Python.LMC_util import plotLMC
 
 # optimization
