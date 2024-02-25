@@ -233,9 +233,19 @@ def check_intersection_palm(LMC_loc, marker, palm_plane_normal, palm_centroid, p
     ll = np.linalg.norm(v)
     v /= ll
     intersection_point = intersectionPoint_pln_line(n=palm_plane_normal, v=v, c=palm_centroid, p=marker)
-    LMC_IP = (intersection_point - LMC_loc) / np.linalg.norm(intersection_point - LMC_loc) # vector from LMC to palm intersection point
+    LMC_IP = intersection_point - LMC_loc  # vector from LMC to palm intersection point
+    LMC_IP /= np.linalg.norm(LMC_IP)
     occlusion = False
-    if np.linalg.norm(intersection_point - LMC_loc) < ll and np.arccos(LMC_IP@v) == 0: # if the finger marker is closer to the LMC than the intersection point, there cant be a collision AND the vector from the LMC to the intersection point and the vector from the LMC to the marker point in the same direction
+    # if the finger marker is closer to the LMC than the intersection point, there cant be a collision 
+    # AND if the vector from the LMC to the intersection point and the vector from the LMC to the marker point in the same direction
+    # the -0.000001 is ther to prevent numeric errors that push the input of arccos outside of [-1, 1], which would be in valid
+    val = LMC_IP@v
+    while abs(val > 1):
+        if val < 0:
+            val += 0.0000001
+        else:
+            val -= 0.0000001
+    if np.linalg.norm(intersection_point - LMC_loc) < ll and np.abs(np.arccos(val)) < 0.05:
         occlusion = in_hull(palm_markers, intersection_point) # check if the intersection point lies in the conves hull of the palm markers
         
         if verbose > 0:
