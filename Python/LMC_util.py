@@ -56,8 +56,8 @@ def make_LMC(LMC_loc, LMC_orient, LMC_H=600, LMC_alpha1 = (180-150) / 2 * np.pi 
         dim are the vector x, y, z directions
         4 = np.array plnvevs has the shape [4, dim]; the plnvecs are ordered clockwise, with 0 in the plane, when the usb connector is on the left. Careful n0 will then point away from the user
         dim are the vector x, y, z directions
-        5 = float [deg] LMC FoV plane angles for the pyramid sides on the short sides (USB connector sides)
-        6 = flot [deg] LMC FoV plane angles for the pyramid sides on the lon sides
+        6 = float [deg] LMC FoV plane angles for the pyramid sides on the short sides (USB connector sides)
+        7 = flot [deg] LMC FoV plane angles for the pyramid sides on the lon sides
     '''
     LMC_nvecs, LMC_pln_vecs, LMC_fwd = getLMC_plns(LMC_orient, LMC_alpha1, LMC_alpha2)
     return [LMC_loc, LMC_orient, LMC_H, LMC_nvecs, LMC_pln_vecs, LMC_fwd, LMC_alpha1, LMC_alpha2]
@@ -240,11 +240,12 @@ def check_intersection_palm(LMC_loc, marker, palm_plane_normal, palm_centroid, p
     # AND if the vector from the LMC to the intersection point and the vector from the LMC to the marker point in the same direction
     # the -0.000001 is ther to prevent numeric errors that push the input of arccos outside of [-1, 1], which would be in valid
     val = LMC_IP@v
-    while abs(val > 1):
+    while abs(val > 0.9999999):
         if val < 0:
-            val += 0.0000001
+            val += 0.0001
         else:
-            val -= 0.0000001
+            val -= 0.0001
+    val -= 0.0001 * np.sign(val) # numeric issues 
     if np.linalg.norm(intersection_point - LMC_loc) < ll and np.abs(np.arccos(val)) < 0.05:
         occlusion = in_hull(palm_markers, intersection_point) # check if the intersection point lies in the conves hull of the palm markers
         
