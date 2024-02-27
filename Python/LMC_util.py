@@ -367,8 +367,8 @@ def make_hand_poses(frames):
         handMarkers[i, :] = pos_markers
         pv1__ =  pos_markers[1] - pos_markers[9] # vector pointing from the finger root to the wrist
         pv1__ /= np.linalg.norm(pv1__)
-        palmMarkers[i, :] = np.array([pos_markers[5] + pv1__*3, pos_markers[9] + # to make sure the finger root markers do not intersect with the palm
-                                      pv1__*3, pos_markers[13] + pv1__*3, pos_markers[18] + pv1__*3, pos_markers[1] - pv1__*5, pos_markers[17]])
+        palmMarkers[i, :] = np.array([pos_markers[5] + pv1__*3, pos_markers[9] + pv1__*3, # to make sure the finger root markers do not intersect with the palm
+                                     pos_markers[13] + pv1__*3, pos_markers[18] + pv1__*3, pos_markers[1] - pv1__*5, pos_markers[17]])
 
         palmPlnNormals[i, :] = get_regressionPlane(palmMarkers[i, :]) # normal plane to the palm and palm centroid
         palmCentroids[i, :] = np.mean(palmMarkers[i, :], axis=0) # centroid marker of the palm
